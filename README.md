@@ -1,6 +1,6 @@
-    Project Documentation: Shop Sales & Inventory Manager
+Project Documentation: Shop Sales & Inventory Manager
 
-Version: 0.1
+Version: 0.2
 Date: 2023-10-27 (Updated)
 
 Table of Contents:
@@ -15,27 +15,29 @@ Development Phases
 
 High-Level Architecture
 
-Core Modules & Classes (Implemented in v0.1)
+Core Modules & Classes (Implemented in v0.2)
 
-Data Models (Implemented in v0.1)
+Data Models (Implemented in v0.2)
 
-Key Workflows (Implemented/Partially Implemented in v0.1)
+Key Workflows (Implemented/Partially Implemented in v0.2)
 
-User Interface (Implemented in v0.1)
+User Interface (Implemented in v0.2)
+
+Next Steps / Things To Do (Post v0.2)
 
 Phase 2: OCR Integration Plan (Future)
 
-Technology Stack (Used in v0.1)
+Technology Stack (Used in v0.2)
 
 Setup & Running
 
-Future Considerations
+Future Considerations (Long Term)
 
 Documentation Maintenance
 
 1. Introduction
 
-The Shop Sales & Inventory Manager is a cross-platform application designed to help a small shop owner manage daily sales records and maintain product inventory levels. It aims to replace or supplement manual tracking methods, providing a digital record and basic reporting capabilities. Version 0.1 focuses on establishing the core inventory management functionality.
+The Shop Sales & Inventory Manager is a cross-platform application designed to help a small shop owner manage daily sales records and maintain product inventory levels digitally. Version 0.2 establishes the core functionality for manual inventory management and sales entry, including the necessary backend logic, data persistence, and user interfaces for these tasks on native desktop platforms.
 
 2. Goals & Scope
 
@@ -43,271 +45,327 @@ Primary Goal: Accurately record sales transactions and update inventory stock le
 
 Secondary Goal: Provide simple views for sales history and current inventory status.
 
-Scope (v0.1 - Phase 1):
+Scope (v0.2 - Phase 1 Implemented):
 
-Implement core data models.
+Core data models (Product, SaleItem, SaleRecord).
 
-Implement database persistence using SQLite for native platforms (Windows, Android, iOS).
+SQLite database persistence (sqflite, sqflite_common_ffi for desktop).
 
-Implement InventoryManager for product CRUD and stock operations.
+InventoryManager for product CRUD and stock operations.
 
-Implement SalesManager logic for creating sales and retrieving history.
+SalesManager logic for creating sales (manual entry), deleting sales, and retrieving history/totals.
 
-Implement basic UI for viewing, adding, editing, and deleting inventory items.
+Dependency injection setup using Provider.
 
-Setup dependency injection using Provider.
+Main application navigation using BottomNavigationBar (MainScreen).
 
-Scope (Future - Phase 1 Continued):
+Functional UI (InventoryScreen) for viewing, adding, editing (via AddEditProductScreen), and deleting inventory items, including pull-to-refresh.
 
-Implement UI for manual sales entry.
+Functional UI (SalesEntryScreen) for manually recording sales: date selection, searchable product selection (Autocomplete), quantity/price input, temporary item list management, finalizing sales (triggers SalesManager), user feedback, and screen clearing.
 
-Implement UI for viewing sales history.
+Basic placeholder UI (SalesHistoryScreen) for the history view.
 
-Scope (Future - Phase 2): Integrate Optical Character Recognition (OCR) to automate sales data entry from uploaded handwritten JPEG images.
+Keyboard shortcuts (Hotkeys) for primary actions (tab switching, new product, save product, finalize sale).
+
+Scope (Future - Phase 1 Completion):
+
+Full implementation of the SalesHistoryScreen UI (date range selection, list display, total display, details view).
+
+UI/UX Refinements (e.g., Autocomplete hover highlighting).
+
+Currency formatting update (USD to INR).
+
+Implementation of complex features like stock reversal on sale deletion.
+
+Comprehensive error handling review.
+
+Scope (Future - Phase 2): OCR integration for automated sales entry from images.
 
 3. Target Platform & User
 
-Platform (v0.1 Focus): Windows Desktop (validated), Android/iOS (code compatible via Flutter/SQLite). Web is explicitly excluded due to SQLite limitations.
+Platform (v0.2 Validated): Windows Desktop.
+
+Platform (Code Compatible): Android, iOS (via Flutter and sqflite standard implementation). Linux, macOS Desktop (via Flutter and sqflite_common_ffi).
+
+Platform (Excluded): Web (due to sqflite limitations).
 
 User: Single primary user (shop owner/manager).
 
 4. Development Phases
 
-Phase 1 (v0.1 In Progress): Implement the core application logic with manual data entry. Build the foundation for inventory management, sales recording, data persistence, and the user interface for these tasks. v0.1 completes the inventory management backend and UI.
+Phase 1 (In Progress - v0.2 Completed Inventory & Sales Entry UI): Implement the core application logic with manual data entry. Build the foundation for inventory management, sales recording, data persistence, and the user interface for these tasks. v0.2 completes the inventory and sales entry backend & UI. The remaining task for Phase 1 is the Sales History screen and refinements.
 
-Phase 2 (Future Implementation): Add functionality to upload JPEG images of handwritten sales notes, process them using an OCR solution, allow user confirmation/correction of extracted data, and record the sale automatically.
+Phase 2 (Future Implementation): Add functionality to upload JPEG images, process via OCR, allow user confirmation, and record sales automatically.
 
 5. High-Level Architecture
 
 The application follows a layered architecture pattern:
 
-User Interface (UI): Handles user interaction, data display, and input gathering. Built using Flutter. (Implemented: Inventory screens).
+User Interface (UI): Built with Flutter. Handles user interaction, displays data, gathers input. Managed via MainScreen with BottomNavigationBar. Includes InventoryScreen, AddEditProductScreen, SalesEntryScreen. SalesHistoryScreen is partially implemented.
 
-Business Logic Layer: Contains the core application logic. Dependencies managed via Provider.
+Business Logic Layer: Contains core application logic. Dependencies are injected/managed via Provider.
 
-InventoryManager: Manages product data and stock levels. (Implemented).
+InventoryManager: Manages product data (CRUD, stock). Implemented.
 
-SalesManager: Orchestrates the creation and retrieval of sales records. (Implemented).
+SalesManager: Manages sales records (create, delete, retrieve). Implemented.
 
-(Phase 2) ImageProcessor, SalesDataParser: Handle OCR processing. (Not Implemented).
+(Phase 2) ImageProcessor, SalesDataParser: (Not Implemented).
 
-Data Persistence Layer:
+Data Persistence Layer: Abstracts database interactions.
 
-DatabaseService: Abstract interface for persistence. (Implemented).
+DatabaseService: Interface defining persistence contract. Implemented.
 
-SQLiteDatabaseService: Concrete implementation using sqflite and sqflite_common_ffi for desktop compatibility. (Implemented).
+SQLiteDatabaseService: Concrete implementation using sqflite / sqflite_common_ffi. Handles SQL operations, table creation, transactions. Implemented.
 
-SQLite Database: Local storage file (shop_inventory.db).
+SQLite Database: Local file (shop_inventory.db).
 
-6. Core Modules & Classes (Implemented in v0.1)
+Dependency Flow: UI Widgets -> access Managers (via Provider) -> Managers -> use DatabaseService -> DatabaseService -> interacts with SQLite DB.
+
+6. Core Modules & Classes (Implemented in v0.2)
 
 InventoryManager (lib/managers/inventory_manager.dart)
 
-Purpose: Manages product catalog and stock levels via an in-memory cache synchronized with the database.
+Purpose: Central point for managing product catalog and stock levels. Uses an in-memory cache (_productsCache) synchronized with the database for performance.
 
-Dependencies: DatabaseService.
+Dependencies: DatabaseService. Injected via constructor.
 
-Key Functions: loadInventory, addProduct, updateProduct, deleteProduct, getProductById, findProductByName, getAllProducts (returns unmodifiable list), decreaseStock, increaseStock.
+Key Functions: loadInventory(), addProduct(), updateProduct(), deleteProduct(), getProductById(), findProductByName(), getAllProducts() (returns List.unmodifiable), decreaseStock(), increaseStock().
 
-Notes: Handles UUID generation for new products. Requires loadInventory call on startup. Implemented basic duplicate name check on add. Includes error handling for database constraints during deletion.
+Details: Generates UUIDs for new products. Requires loadInventory() call on app startup. Performs client-side checks (e.g., duplicate name on add, sufficient stock on decrease). Handles database constraint errors on delete (e.g., if product is in a sale).
 
 SalesManager (lib/managers/sales_manager.dart)
 
-Purpose: Handles the creation and retrieval of sales records, interacts with InventoryManager for stock validation/updates.
+Purpose: Handles creation, retrieval, deletion, and aggregation of sales records. Interacts with InventoryManager for stock validation and updates during sale creation.
 
-Dependencies: DatabaseService, InventoryManager.
+Dependencies: DatabaseService, InventoryManager. Injected via constructor.
 
-Key Functions: createSaleRecord (validates stock, decreases via InventoryManager, saves via DatabaseService), getSalesHistory, calculateTotalSales.
+Key Functions: createSaleRecord(), getSalesHistory(), calculateTotalSales(), deleteSaleRecord().
 
-Notes: Uses SaleInputItem type alias for input. createSaleRecord attempts stock decrease before saving but atomicity across managers has limitations.
+Details: createSaleRecord uses SaleInputItem record type, validates input, checks product existence, attempts InventoryManager.decreaseStock for all items before saving the sale record to the database (this sequence has atomicity limitations between stock update and sale save). deleteSaleRecord calls DatabaseService to remove the record (associated items deleted via DB cascade). Note: deleteSaleRecord currently does not revert inventory stock changes automatically; this is marked as a complex future enhancement.
 
 DatabaseService (lib/services/database_service.dart)
 
-Purpose: Abstract interface defining the contract for data persistence operations.
+Purpose: Abstract interface (abstract class) defining the contract for data persistence operations, decoupling business logic from SQLite specifics.
 
-Key Functions: initDatabase, saveProduct, deleteProduct, getAllProductsFromDb, getProductByIdFromDb, updateStockInDb, saveSaleRecord, getSalesRecordsFromDb, closeDatabase.
+Methods: initDatabase, saveProduct, deleteProduct, getAllProductsFromDb, getProductByIdFromDb, updateStockInDb, saveSaleRecord, getSalesRecordsFromDb, deleteSaleRecord, closeDatabase.
 
 SQLiteDatabaseService (lib/services/sqlite_database_service.dart)
 
-Purpose: Concrete implementation of DatabaseService using sqflite (and sqflite_common_ffi for desktop).
+Purpose: Concrete implementation of DatabaseService for SQLite.
 
-Key Functions: Implements all functions from DatabaseService. Handles database initialization, table creation (_onCreate), CRUD operations using SQL commands, and transactional saving for SaleRecord and its SaleItems.
+Details: Uses sqflite and sqflite_common_ffi. Handles DB initialization (_initDB), table creation (_onCreate with specific schemas, primary/foreign keys, indexes, and ON DELETE constraints). Implements all CRUD methods using SQL commands (INSERT, UPDATE, DELETE, QUERY). Uses db.transaction for saveSaleRecord and deleteSaleRecord for atomicity within the database operations themselves. Stores DateTime as ISO8601 strings. Requires FFI initialization in main.dart for desktop execution.
 
-Notes: Stores dates as ISO8601 strings. Uses Foreign Keys with ON DELETE CASCADE (SaleItems) and ON DELETE RESTRICT (Products). Requires FFI initialization in main.dart for desktop.
-
-7. Data Models (Implemented in v0.1)
+7. Data Models (Implemented in v0.2)
 
 Product (lib/models/product.dart)
 
 Attributes: productId (String, PK), itemName (String), currentStock (int), defaultUnitPrice (double).
 
-Methods: Includes toMap, fromMap for database interaction.
+Includes toMap, fromMap helpers.
 
 SaleItem (lib/models/sale_item.dart)
 
-Attributes: saleItemId (String, PK), saleRecordId (String, FK), productId (String, FK), itemNameSnapshot (String), quantity (int), unitPrice (double), lineTotal (double, calculated).
+Attributes: saleItemId (String, PK), saleRecordId (String, FK->SaleRecord), productId (String, FK->Product), itemNameSnapshot (String - captures name at time of sale), quantity (int), unitPrice (double), lineTotal (double - calculated).
 
-Methods: Includes toMap, fromMap. lineTotal calculated in constructor.
+Includes toMap, fromMap helpers.
 
 SaleRecord (lib/models/sale_record.dart)
 
-Attributes: recordId (String, PK), saleDate (DateTime), processedTimestamp (DateTime), itemsSold (List<SaleItem>), totalAmount (double), entryMethod (String).
+Attributes: recordId (String, PK), saleDate (DateTime), processedTimestamp (DateTime), itemsSold (List<SaleItem>), totalAmount (double), entryMethod (String - e.g., "MANUAL").
 
-Notes: Database persistence handles storing/retrieving the itemsSold list via the separate sale_items table.
+Persistence handles the itemsSold list via the separate sale_items table linked by saleRecordId.
 
-8. Key Workflows (Implemented/Partially Implemented in v0.1)
+8. Key Workflows (Implemented/Partially Implemented in v0.2)
 
-App Initialization: main.dart initializes Flutter, sets up SQFlite FFI for desktop, initializes DatabaseService, InventoryManager, SalesManager, loads initial inventory, and provides managers via Provider. Handles critical initialization errors. (Implemented).
+App Initialization: main.dart ensures Flutter bindings, initializes SQFlite FFI (if desktop), creates and initializes DatabaseService, InventoryManager, SalesManager, calls loadInventory(), sets up MultiProvider with manager instances, and runs MyApp starting with MainScreen. Includes basic critical error handling. (Implemented).
 
-View Inventory: InventoryScreen fetches product list from InventoryManager via Provider, handles loading/error states, displays products sorted alphabetically in Cards. Includes pull-to-refresh. (Implemented).
+Inventory Viewing: User selects "Inventory" tab on MainScreen. InventoryScreen fetches data via InventoryManager, displays sorted list in Cards with stock/price, supports pull-to-refresh. (Implemented).
 
-Add Product: Navigate from InventoryScreen to AddEditProductScreen (Add mode). User enters details into a validated Form. On save, calls InventoryManager.addProduct, returns to InventoryScreen, refreshes list. (Implemented).
+Add Inventory Product: User taps "+" icon (or Ctrl+N) on InventoryScreen. Navigates to AddEditProductScreen (Add mode). User fills form (with validation/formatting). Taps Save icon (or Ctrl+S). _saveProduct calls InventoryManager.addProduct. On success, navigates back, InventoryScreen refreshes. (Implemented).
 
-Edit Product: Navigate from InventoryScreen (tap item or use menu) to AddEditProductScreen (Edit mode) with pre-filled data. User edits details. On save, calls InventoryManager.updateProduct, returns, refreshes list. (Implemented).
+Edit Inventory Product: User taps list item or uses menu on InventoryScreen. Navigates to AddEditProductScreen (Edit mode) with data pre-filled. User modifies form. Taps Save icon (or Ctrl+S). _saveProduct calls InventoryManager.updateProduct. On success, navigates back, InventoryScreen refreshes. (Implemented).
 
-Delete Product: Triggered from InventoryScreen popup menu. Shows confirmation dialog. Calls InventoryManager.deleteProduct. Refreshes list on success. Handles potential DB constraint errors. (Implemented).
+Delete Inventory Product: User uses menu on InventoryScreen. Confirmation dialog shown. If confirmed, calls InventoryManager.deleteProduct. Handles potential foreign key constraint errors from DB. InventoryScreen refreshes on success. (Implemented).
 
-Record Sale: SalesManager.createSaleRecord logic is implemented. (UI for triggering this not yet implemented).
+Manual Sales Entry: User selects "Record Sale" tab on MainScreen. SalesEntryScreen loads available products for Autocomplete. User selects date, searches/selects product, enters quantity/price. User clicks "+" button to add item to temporary list (_currentSaleItems). List updates, total updates, form clears. User can remove items from list. (Implemented).
 
-View Sales History: SalesManager.getSalesHistory and calculateTotalSales logic implemented. (UI not yet implemented).
+Finalize Manual Sale: User clicks "Finalize Sale" button (AppBar or bottom row) or presses Ctrl+Enter on SalesEntryScreen. _finalizeSale validates list isn't empty, converts items to SaleInputItem format, calls SalesManager.createSaleRecord. SalesManager validates stock/decreases stock via InventoryManager, saves record via DatabaseService. Screen shows success/error feedback and clears on success. (Implemented).
 
-9. User Interface (Implemented in v0.1)
+Sales History Viewing: User selects "History" tab. SalesHistoryScreen loads (currently shows placeholder). Date range selection and fetching logic exists but UI list display needs implementation. (Partially Implemented).
 
-main.dart: Sets up MaterialApp, theme, MultiProvider, and routes initial screen. Includes error widget for initialization failures.
+Delete Sales Record: Triggered from SalesHistoryScreen (UI element pending full implementation). Shows confirmation (warning about no stock reversal). Calls SalesManager.deleteSaleRecord. Refreshes history list. (Backend Logic Implemented, UI Action Pending).
 
-InventoryScreen (lib/screens/inventory_screen.dart):
+9. User Interface (Implemented in v0.2)
 
-Displays a list of products using ListView.builder and Cards.
+main.dart: Core setup: WidgetsFlutterBinding, FFI init, manager initialization, MultiProvider, MaterialApp (theme, home route). Includes ErrorAppWidget.
 
-Shows product name, price, and stock.
+MainScreen (lib/screens/main_screen.dart): Stateful widget acting as the main app shell.
 
-Includes pull-to-refresh (RefreshIndicator).
+Hosts Scaffold with BottomNavigationBar for Inventory, Record Sale, History tabs.
 
-AppBar action button navigates to Add Product screen.
+Uses IndexedStack to preserve state of the child screens when switching tabs.
 
-List items are tappable to navigate to Edit Product screen.
+Manages the selected tab index (_selectedIndex).
 
-Includes PopupMenuButton on each item for Edit/Delete actions.
+Implements Ctrl+1/2/3 hotkeys for tab switching via Actions/Shortcuts.
 
-Handles loading and error states.
+InventoryScreen (lib/screens/inventory_screen.dart): Stateful widget displaying inventory.
 
-AddEditProductScreen (lib/screens/add_edit_product_screen.dart):
+Fetches products via InventoryManager on load.
 
-Single screen for both adding and editing products (isEditMode).
+Displays products in a sorted ListView.builder with Cards showing name, price, stock.
 
-Uses Form with TextFormFields for name, stock, price.
+Includes RefreshIndicator (pull-to-refresh).
 
-Includes input validation and input formatters.
+AppBar action (+ icon) navigates to AddEditProductScreen.
 
-Pre-fills data when editing.
+ListTile onTap navigates to AddEditProductScreen (edit mode).
 
-Calls appropriate InventoryManager method on save.
+PopupMenuButton on each item for Edit/Delete actions (with confirmation dialog for delete).
 
-Navigates back on successful save, returning true.
+Handles loading/error states.
 
-Shows loading indicator and handles save errors with SnackBars.
+Implements Ctrl+N hotkey via Actions/Shortcuts.
 
-9. User Interface (Implemented in v0.1)
-main.dart: Sets up MaterialApp, theme, MultiProvider, and routes initial screen. Includes error widget for initialization failures.
-InventoryScreen (lib/screens/inventory_screen.dart):
-Displays a list of products using ListView.builder and Cards.
-Shows product name, price, and stock.
-Includes pull-to-refresh (RefreshIndicator).
-AppBar action button navigates to Add Product screen.
-List items are tappable to navigate to Edit Product screen.
-Includes PopupMenuButton on each item for Edit/Delete actions.
-Handles loading and error states.
-AddEditProductScreen (lib/screens/add_edit_product_screen.dart):
-Single screen for both adding and editing products (isEditMode).
-Uses Form with TextFormFields for name, stock, price.
-Includes input validation and input formatters.
-Pre-fills data when editing.
-Calls appropriate InventoryManager method on save.
-Navigates back on successful save, returning true.
-Shows loading indicator and handles save errors with SnackBars.
+AddEditProductScreen (lib/screens/add_edit_product_screen.dart): Stateful widget for adding/editing products.
 
+Receives optional Product for edit mode.
 
-10. Next Steps / Things To Do (Towards Phase 1 Completion)
-This section outlines the immediate tasks required to continue development from the current state (v0.1) and complete the core manual entry features of Phase 1.
-Implement Navigation:
-Choose and implement a primary navigation method (e.g., BottomNavigationBar, Drawer).
-Create placeholder screens/routing for "Sales Entry" and "Sales History".
-Integrate InventoryScreen into this navigation structure. Update MyApp in main.dart to use the main navigation widget instead of directly showing InventoryScreen.
-Implement SalesEntryScreen:
-Create lib/screens/sales_entry_screen.dart.
-Design UI to:
-Select the sale date (DatePickerDialog).
-Allow adding multiple items to the sale:
-Use a dropdown or search functionality (e.g., DropdownButtonFormField, Autocomplete) to select a Product from the list provided by InventoryManager.getAllProducts().
-Input fields for quantity and unit_price (pre-fill price from selected product's defaultUnitPrice).
-Button to add the selected item details to a temporary list for the current sale.
-Display the list of items added to the current sale with calculated lineTotal and a running grand totalAmount.
-Allow removing items from the temporary list before finalizing.
-Implement a "Finalize Sale" button that:
-Collects the data into the List<SaleInputItem> format.
-Calls SalesManager.createSaleRecord via Provider.
-Handles loading states and potential errors (insufficient stock, etc.) returned from the SalesManager.
-Clears the form or navigates away on success.
-Implement SalesHistoryScreen:
-Create lib/screens/sales_history_screen.dart.
-Design UI to:
-Allow selection of a date range (start and end dates).
-Display a list of SaleRecords fetched using SalesManager.getSalesHistory for the selected range.
-For each record, show key info (e.g., saleDate, totalAmount, maybe number of items).
-Optionally, allow tapping a record to view its details (the SaleItem list).
-Display the total sales for the selected period using SalesManager.calculateTotalSales.
-Handle loading and error states.
+Uses Form with TextFormFields for name, stock, price. Includes validation and InputFormatters.
+
+Pre-fills data in edit mode.
+
+Handles save logic (_saveProduct) calling InventoryManager.
+
+Navigates back (pop(true)) on successful save.
+
+Shows loading state and user feedback (SnackBars).
+
+Implements Ctrl+S hotkey via Actions/Shortcuts.
+
+SalesEntryScreen (lib/screens/sales_entry_screen.dart): Stateful widget for recording sales.
+
+Allows DateTime selection via showDatePicker.
+
+Uses Autocomplete widget for searchable product selection, loading options from InventoryManager. Handles selection (onSelected), display (displayStringForOption), option list building (optionsViewBuilder), and text input (fieldViewBuilder). Includes clear button. Sets initial focus.
+
+Includes a Form section (_addItemFormKey) for Quantity and Price TextFormFields with validation and focus nodes.
+
+Button (+) to add validated items to the _currentSaleItems list.
+
+Displays _currentSaleItems in a ListView.builder with Cards, showing item details, line total, and a remove button.
+
+Displays running _currentSaleTotal, formatted as currency.
+
+Provides two "Finalize Sale" buttons (AppBar action, bottom row ElevatedButton) calling _finalizeSale.
+
+_finalizeSale calls SalesManager, handles loading state, shows feedback, clears screen on success.
+
+Implements Ctrl+Enter hotkey via Actions/Shortcuts.
+
+SalesHistoryScreen (lib/screens/sales_history_screen.dart): Stateful widget (placeholder UI).
+
+Includes logic for showDateRangePicker.
+
+Includes logic (_fetchSalesData) to get history/totals from SalesManager based on selected range.
+
+Includes logic (_deleteSaleRecord) for deletion flow (confirmation, manager call, refetch).
+
+Basic UI structure exists, but list display needs full implementation.
+
+10. Next Steps / Things To Do (Post v0.2)
+
+Implement SalesHistoryScreen UI:
+
+Implement _buildContentArea fully to display _salesRecords in a ListView.builder.
+
+Ensure loading/error/empty states are handled visually.
+
+Ensure Date Range Picker and Totals Display are working correctly.
+
+Implement or refine the "View Items" action (currently a basic dialog).
+
+Ensure the Delete action (menu item) is correctly wired and refreshes the list.
+
+Refine SalesEntryScreen Autocomplete:
+
+Add visual highlighting (e.g., change background color) to product suggestion items in optionsViewBuilder on mouse hover. (Requires MouseRegion or similar).
+
+Implement Currency Change (USD to INR):
+
+Replace NumberFormat.currency(symbol: '\$') and direct '$' prefixes with INR equivalent (symbol: '₹ ', potentially locale: 'en_IN') in all relevant UI locations (InventoryScreen, AddEditProductScreen, SalesEntryScreen, SalesHistoryScreen).
+
+(Complex) Implement Stock Reversal on Sale Deletion:
+
+Modify SalesManager.deleteSaleRecord.
+
+Fetch SaleItems for the record before deleting it.
+
+Call InventoryManager.increaseStock for each item.
+
+Implement robust transaction/compensating logic to handle potential failures during stock increase or sale deletion. Update user confirmation dialog warning based on implementation success.
+
 Refine Error Handling & User Feedback:
-Review existing error handling (try-catch blocks, SnackBars).
-Ensure user-friendly messages are shown instead of raw exception strings where appropriate (e.g., use custom dialogs or formatted SnackBars).
-Consider edge cases (e.g., what happens if InventoryManager.loadInventory fails critically in main - ensure the ErrorAppWidget path is robust).
-(Optional but Recommended) Add Basic Tests:
-Write unit tests for methods in InventoryManager and SalesManager, mocking their dependencies (DatabaseService).
-Consider writing widget tests for simpler UI components or screens like AddEditProductScreen to verify form validation and basic interaction.
+
+Review all try-catch blocks and ScaffoldMessenger messages for clarity and user-friendliness.
+
+Improve handling of critical initialization errors in main.dart.
+
+(Optional) Add Basic Tests:
+
+Unit tests for InventoryManager & SalesManager logic (mocking DatabaseService).
+
+Widget tests for AddEditProductScreen form validation or simpler components.
 
 11. Phase 2: OCR Integration Plan (Future)
 
-(This section remains the same as the initial plan)
+(Remains the same - Outlines OCR goal, new components, integration strategy)
 
-Goal: Allow users to upload a JPEG image of a handwritten sales note and automatically populate the sale entry form for confirmation and saving.
+12. Technology Stack (Used in v0.2)
 
-New Components: ImageProcessor, SalesDataParser, OcrConfirmationScreen (UI).
+Language: Dart (Version: [Insert Dart Version from 'flutter --version'])
 
-Integration Strategy: Add "Upload Sale Image" option. Trigger ImageProcessor -> SalesDataParser -> OcrConfirmationScreen. Confirmed data uses existing SalesManager.create_sale_record with entryMethod="OCR".
+Framework: Flutter (Version: [Insert Flutter Version from 'flutter --version'])
 
-Minimal Impact on Core Logic: SalesManager and InventoryManager operate on structured data, independent of source (manual vs. OCR).
+State Management / DI: provider (Version: ^6.0.5 or latest used)
 
-Deferred Technology Choice: Specific OCR tool (Cloud API, Tesseract, AI Model) to be decided in Phase 2.
+Data Persistence: sqflite (Version: ^2.3.0 or latest used)
 
-12. Technology Stack (Used in v0.1)
+Desktop DB Support: sqflite_common_ffi (Version: ^2.3.0 or latest used)
 
-Language: Dart (SDK version from flutter --version)
+Utilities:
 
-Framework: Flutter (version from flutter --version)
+path (Version: ^1.8.3 or latest used) - For DB path
 
-State Management / Dependency Injection: provider
+uuid (Version: ^4.2.1 or latest used) - For unique IDs
 
-Data Persistence: sqflite (with sqflite_common_ffi for desktop)
-
-Database: SQLite
-
-Utilities: path (for DB path), uuid (for unique IDs)
+intl (Version: ^0.18.1 or latest used) - For Date/Number formatting
 
 13. Setup & Running
 
-Ensure Flutter SDK is installed for the target platform (Windows setup documented previously).
+Ensure Flutter SDK (matching version above or compatible) is installed.
 
-For Windows Desktop: Ensure Visual Studio with "Desktop development with C++" workload is installed.
+For Windows Desktop target: Install Visual Studio (2022+) with "Desktop development with C++" workload. Enable Developer Mode in Windows Settings.
 
-Clone the repository/obtain the source code.
+Obtain project source code.
 
-Open the project in VS Code (or Android Studio).
+Open project in a compatible IDE (VS Code recommended).
 
-Run flutter pub get to install dependencies.
+Run flutter pub get in the terminal within the project directory.
 
-Select the target device/platform (e.g., "Windows (desktop)"). Do not select "Web".
+In the IDE, select target device: "Windows (desktop)" (or other compatible native platform). Do NOT select "Web".
 
-Run the application (e.g., F5 in VS Code).
+Run the application (e.g., F5 in VS Code or flutter run -d windows).
+
+14. Future Considerations (Long Term)
+
+(Remains the same - Lists potential distant future enhancements like reporting, backup, barcode scanning, multi-user, etc.)
+
+15. Documentation Maintenance
+
+(Remains the same - Emphasizes keeping docs updated alongside code changes)
+
+This v0.2 document provides a very detailed snapshot of the project, including what's done, how it's implemented architecturally, and what the immediate next steps are. Remember to fill in the specific Flutter/Dart versions when you generate this for real.
 
 14. Future Considerations
 

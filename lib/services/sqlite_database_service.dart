@@ -211,6 +211,22 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   @override
+  Future<void> deleteSaleRecord(String recordId) async {
+    final db = await database;
+    // Use a transaction for safety, though cascade should handle items
+    await db.transaction((txn) async {
+      // Deleting the SaleRecord will automatically delete associated SaleItems
+      // due to the 'ON DELETE CASCADE' foreign key constraint.
+      await txn.delete(
+        _saleRecordTable,
+        where: 'recordId = ?',
+        whereArgs: [recordId],
+      );
+    });
+    print("Deleted SaleRecord $recordId and associated items.");
+  }
+
+  @override
   Future<List<SaleRecord>> getSalesRecordsFromDb(
     DateTime startDate,
     DateTime endDate,

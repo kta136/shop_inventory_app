@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io'; // Import dart:io to check the platform
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'screens/main_screen.dart'; // <-- Import MainScreen
 
 // Import your project files
 import 'managers/inventory_manager.dart';
@@ -14,7 +15,6 @@ import 'services/sqlite_database_service.dart';
 
 // Import the screen (we will rename/create this soon)
 import 'screens/inventory_screen.dart'; // <-- Adjusted path
-
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,21 +52,31 @@ Future<void> main() async {
 
     // --- Initialize SalesManager --- <-- ADDED ---
     print("Creating Sales Manager...");
-    initializedSalesManager = SalesManager(initializedDbService, initializedInventoryManager);
+    initializedSalesManager = SalesManager(
+      initializedDbService,
+      initializedInventoryManager,
+    );
     print("Sales Manager Created.");
     // --- End SalesManager Init ---
 
     initSuccess = true;
-
   } catch (e, stackTrace) {
-     print("!!! CRITICAL ERROR DURING INITIALIZATION: $e");
-     print("!!! StackTrace: $stackTrace");
+    print("!!! CRITICAL ERROR DURING INITIALIZATION: $e");
+    print("!!! StackTrace: $stackTrace");
   }
 
-  if (!initSuccess || initializedInventoryManager == null || initializedDbService == null || initializedSalesManager == null) { // <-- Check SalesManager too
-     print("Initialization failed. Running Error App (Placeholder).");
-     runApp(ErrorAppWidget("App initialization failed. Please check logs and restart."));
-     return;
+  if (!initSuccess ||
+      initializedInventoryManager == null ||
+      initializedDbService == null ||
+      initializedSalesManager == null) {
+    // <-- Check SalesManager too
+    print("Initialization failed. Running Error App (Placeholder).");
+    runApp(
+      ErrorAppWidget(
+        "App initialization failed. Please check logs and restart.",
+      ),
+    );
+    return;
   }
 
   print("Initialization Complete. Running App with Provider...");
@@ -76,7 +86,9 @@ Future<void> main() async {
       providers: [
         Provider<InventoryManager>(create: (_) => initializedInventoryManager!),
         Provider<DatabaseService>(create: (_) => initializedDbService!),
-        Provider<SalesManager>(create: (_) => initializedSalesManager!), // <-- Provide SalesManager
+        Provider<SalesManager>(
+          create: (_) => initializedSalesManager!,
+        ), // <-- Provide SalesManager
       ],
       child: const MyApp(),
     ),
@@ -92,35 +104,38 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Shop Inventory App',
       theme: ThemeData(
-         primarySwatch: Colors.blueGrey, // Changed theme slightly
-         visualDensity: VisualDensity.adaptivePlatformDensity,
-         useMaterial3: true, // Opt-in to Material 3
+        primarySwatch: Colors.blueGrey,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        useMaterial3: true,
       ),
-      // Update home to point to the renamed/new screen
-      home: const InventoryScreen(), // <-- Changed from PlaceholderHomeScreen
+      // Change home to the MainScreen widget
+      home: const MainScreen(), // <-- Use MainScreen here
     );
   }
 }
 
-
 // --- Error Widget (Keep as is) ---
 class ErrorAppWidget extends StatelessWidget {
-   final String message;
-   const ErrorAppWidget(this.message, {super.key});
-    @override
-   Widget build(BuildContext context) {
-     // ... (keep implementation the same) ...
-     return MaterialApp(
-       home: Scaffold(
-         body: Center(
-           child: Padding(
-             padding: const EdgeInsets.all(20.0),
-             child: Text(message, style: TextStyle(color: Colors.red, fontSize: 16), textAlign: TextAlign.center,),
-           ),
-         ),
-       ),
-     );
-   }
+  final String message;
+  const ErrorAppWidget(this.message, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    // ... (keep implementation the same) ...
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              message,
+              style: TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // --- PlaceholderHomeScreen REMOVED ---

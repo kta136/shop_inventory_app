@@ -23,6 +23,7 @@ abstract class DatabaseService {
     DateTime startDate,
     DateTime endDate,
   );
+  Future<void> deleteSaleRecord(String recordId); // <-- ADD THIS LINE
 
   // Clean up resources
   Future<void> closeDatabase();
