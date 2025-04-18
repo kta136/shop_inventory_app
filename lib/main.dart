@@ -1,122 +1,127 @@
-import 'package:flutter/material.dart';
+// lib/main.dart
 
-void main() {
-  runApp(const MyApp());
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'dart:io'; // Import dart:io to check the platform
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+// Import your project files
+import 'managers/inventory_manager.dart';
+import 'managers/sales_manager.dart'; // <-- Import SalesManager
+import 'models/product.dart';
+import 'services/database_service.dart';
+import 'services/sqlite_database_service.dart';
+
+// Import the screen (we will rename/create this soon)
+import 'screens/inventory_screen.dart'; // <-- Adjusted path
+
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    print("Running on Desktop, Initializing sqflite FFI...");
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    print("sqflite FFI Initialized.");
+  }
+
+  print("Starting App Initialization...");
+
+  DatabaseService? initializedDbService;
+  InventoryManager? initializedInventoryManager;
+  SalesManager? initializedSalesManager; // <-- Add variable for SalesManager
+  bool initSuccess = false;
+
+  try {
+    print("Creating Database Service...");
+    initializedDbService = SQLiteDatabaseService();
+    print("Database Service Created.");
+
+    print("Initializing Database...");
+    await initializedDbService.initDatabase();
+    print("Database Initialized Successfully.");
+
+    print("Creating Inventory Manager...");
+    initializedInventoryManager = InventoryManager(initializedDbService);
+    print("Inventory Manager Created.");
+
+    print("Loading Inventory...");
+    await initializedInventoryManager.loadInventory();
+    print("Inventory Loaded Successfully.");
+
+    // --- Initialize SalesManager --- <-- ADDED ---
+    print("Creating Sales Manager...");
+    initializedSalesManager = SalesManager(initializedDbService, initializedInventoryManager);
+    print("Sales Manager Created.");
+    // --- End SalesManager Init ---
+
+    initSuccess = true;
+
+  } catch (e, stackTrace) {
+     print("!!! CRITICAL ERROR DURING INITIALIZATION: $e");
+     print("!!! StackTrace: $stackTrace");
+  }
+
+  if (!initSuccess || initializedInventoryManager == null || initializedDbService == null || initializedSalesManager == null) { // <-- Check SalesManager too
+     print("Initialization failed. Running Error App (Placeholder).");
+     runApp(ErrorAppWidget("App initialization failed. Please check logs and restart."));
+     return;
+  }
+
+  print("Initialization Complete. Running App with Provider...");
+
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<InventoryManager>(create: (_) => initializedInventoryManager!),
+        Provider<DatabaseService>(create: (_) => initializedDbService!),
+        Provider<SalesManager>(create: (_) => initializedSalesManager!), // <-- Provide SalesManager
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
+// --- Your Main Application Widget ---
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Shop Inventory App',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+         primarySwatch: Colors.blueGrey, // Changed theme slightly
+         visualDensity: VisualDensity.adaptivePlatformDensity,
+         useMaterial3: true, // Opt-in to Material 3
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      // Update home to point to the renamed/new screen
+      home: const InventoryScreen(), // <-- Changed from PlaceholderHomeScreen
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+// --- Error Widget (Keep as is) ---
+class ErrorAppWidget extends StatelessWidget {
+   final String message;
+   const ErrorAppWidget(this.message, {super.key});
+    @override
+   Widget build(BuildContext context) {
+     // ... (keep implementation the same) ...
+     return MaterialApp(
+       home: Scaffold(
+         body: Center(
+           child: Padding(
+             padding: const EdgeInsets.all(20.0),
+             child: Text(message, style: TextStyle(color: Colors.red, fontSize: 16), textAlign: TextAlign.center,),
+           ),
+         ),
+       ),
+     );
+   }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
-  }
-}
+// --- PlaceholderHomeScreen REMOVED ---
+// We will create InventoryScreen and AddEditProductScreen in separate files.
