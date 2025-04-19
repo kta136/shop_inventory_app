@@ -137,8 +137,9 @@ class InventoryManager {
 
   // --- Stock Management ---
   Future<bool> decreaseStock(String productId, int quantitySold) async {
-    if (quantitySold <= 0)
+    if (quantitySold <= 0) {
       return false; // Cannot sell zero or negative quantity
+    }
 
     final index = _productsCache.indexWhere((p) => p.productId == productId);
     if (index != -1) {
@@ -168,8 +169,9 @@ class InventoryManager {
   }
 
   Future<bool> increaseStock(String productId, int quantityAdded) async {
-    if (quantityAdded <= 0)
+    if (quantityAdded <= 0) {
       return false; // Cannot add zero or negative quantity
+    }
 
     final index = _productsCache.indexWhere((p) => p.productId == productId);
     if (index != -1) {

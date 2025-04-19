@@ -63,17 +63,13 @@ Functional UI (InventoryScreen) for viewing, adding, editing (via AddEditProduct
 
 Functional UI (SalesEntryScreen) for manually recording sales: date selection, searchable product selection (Autocomplete), quantity/price input, temporary item list management, finalizing sales (triggers SalesManager), user feedback, and screen clearing.
 
-Basic placeholder UI (SalesHistoryScreen) for the history view.
+Functional UI (SalesHistoryScreen) for viewing sales history: date range selection, list display, total display, view item details dialog, record deletion with confirmation.
 
 Keyboard shortcuts (Hotkeys) for primary actions (tab switching, new product, save product, finalize sale).
 
 Scope (Future - Phase 1 Completion):
 
-Full implementation of the SalesHistoryScreen UI (date range selection, list display, total display, details view).
-
 UI/UX Refinements (e.g., Autocomplete hover highlighting).
-
-Currency formatting update (USD to INR).
 
 Implementation of complex features like stock reversal on sale deletion.
 
@@ -93,7 +89,7 @@ User: Single primary user (shop owner/manager).
 
 4. Development Phases
 
-Phase 1 (In Progress - v0.2 Completed Inventory & Sales Entry UI): Implement the core application logic with manual data entry. Build the foundation for inventory management, sales recording, data persistence, and the user interface for these tasks. v0.2 completes the inventory and sales entry backend & UI. The remaining task for Phase 1 is the Sales History screen and refinements.
+Phase 1 (Completed - v0.2 + History UI + Currency): Implemented the core application logic with manual data entry. Built the foundation for inventory management, sales recording, data persistence, and the user interface for these tasks, including Inventory, Sales Entry, and Sales History screens. Currency updated to INR. The remaining tasks for Phase 1 are refinements like Autocomplete hover and stock reversal.
 
 Phase 2 (Future Implementation): Add functionality to upload JPEG images, process via OCR, allow user confirmation, and record sales automatically.
 
@@ -101,7 +97,7 @@ Phase 2 (Future Implementation): Add functionality to upload JPEG images, proces
 
 The application follows a layered architecture pattern:
 
-User Interface (UI): Built with Flutter. Handles user interaction, displays data, gathers input. Managed via MainScreen with BottomNavigationBar. Includes InventoryScreen, AddEditProductScreen, SalesEntryScreen. SalesHistoryScreen is partially implemented.
+User Interface (UI): Built with Flutter. Handles user interaction, displays data, gathers input. Managed via MainScreen with BottomNavigationBar. Includes InventoryScreen, AddEditProductScreen, SalesEntryScreen, and SalesHistoryScreen.
 
 Business Logic Layer: Contains core application logic. Dependencies are injected/managed via Provider.
 
@@ -191,9 +187,9 @@ Manual Sales Entry: User selects "Record Sale" tab on MainScreen. SalesEntryScre
 
 Finalize Manual Sale: User clicks "Finalize Sale" button (AppBar or bottom row) or presses Ctrl+Enter on SalesEntryScreen. _finalizeSale validates list isn't empty, converts items to SaleInputItem format, calls SalesManager.createSaleRecord. SalesManager validates stock/decreases stock via InventoryManager, saves record via DatabaseService. Screen shows success/error feedback and clears on success. (Implemented).
 
-Sales History Viewing: User selects "History" tab. SalesHistoryScreen loads (currently shows placeholder). Date range selection and fetching logic exists but UI list display needs implementation. (Partially Implemented).
+Sales History Viewing: User selects "History" tab. SalesHistoryScreen loads, allows date range selection, fetches data via SalesManager, displays sorted list in Cards with total, date, item count, entry method. Supports pull-to-refresh. (Implemented).
 
-Delete Sales Record: Triggered from SalesHistoryScreen (UI element pending full implementation). Shows confirmation (warning about no stock reversal). Calls SalesManager.deleteSaleRecord. Refreshes history list. (Backend Logic Implemented, UI Action Pending).
+Delete Sales Record: Triggered from SalesHistoryScreen via menu. Shows confirmation (warning about no stock reversal). Calls SalesManager.deleteSaleRecord. Refreshes history list. (Implemented).
 
 9. User Interface (Implemented in v0.2)
 
@@ -263,37 +259,23 @@ _finalizeSale calls SalesManager, handles loading state, shows feedback, clears 
 
 Implements Ctrl+Enter hotkey via Actions/Shortcuts.
 
-SalesHistoryScreen (lib/screens/sales_history_screen.dart): Stateful widget (placeholder UI).
+SalesHistoryScreen (lib/screens/sales_history_screen.dart): Stateful widget displaying sales history.
 
-Includes logic for showDateRangePicker.
+Allows date range selection via showDateRangePicker.
 
-Includes logic (_fetchSalesData) to get history/totals from SalesManager based on selected range.
+Fetches records and totals via SalesManager based on selected range.
 
-Includes logic (_deleteSaleRecord) for deletion flow (confirmation, manager call, refetch).
+Displays records in a ListView.builder with Cards showing date, item count, total, entry method.
 
-Basic UI structure exists, but list display needs full implementation.
+Includes RefreshIndicator (though less common here, could be used).
 
-10. Next Steps / Things To Do (Post v0.2)
+Provides PopupMenuButton on each item for "View Items" (shows dialog) and "Delete Record" (with confirmation).
 
-Implement SalesHistoryScreen UI:
+Handles loading/error/empty states.
 
-Implement _buildContentArea fully to display _salesRecords in a ListView.builder.
+Initializes with a default date range (e.g., current month).
 
-Ensure loading/error/empty states are handled visually.
-
-Ensure Date Range Picker and Totals Display are working correctly.
-
-Implement or refine the "View Items" action (currently a basic dialog).
-
-Ensure the Delete action (menu item) is correctly wired and refreshes the list.
-
-Refine SalesEntryScreen Autocomplete:
-
-Add visual highlighting (e.g., change background color) to product suggestion items in optionsViewBuilder on mouse hover. (Requires MouseRegion or similar).
-
-Implement Currency Change (USD to INR):
-
-Replace NumberFormat.currency(symbol: '\$') and direct '$' prefixes with INR equivalent (symbol: '₹ ', potentially locale: 'en_IN') in all relevant UI locations (InventoryScreen, AddEditProductScreen, SalesEntryScreen, SalesHistoryScreen).
+10. Next Steps / Things To Do (Post v0.2 - Phase 1 Refinements)
 
 (Complex) Implement Stock Reversal on Sale Deletion:
 

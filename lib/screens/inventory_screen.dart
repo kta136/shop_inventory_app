@@ -231,7 +231,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
             child: ListTile(
               title: Text(product.itemName, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('Price: \$${product.defaultUnitPrice.toStringAsFixed(2)}'),
+              // Updated currency symbol
+              subtitle: Text('Price: ₹${product.defaultUnitPrice.toStringAsFixed(2)}'),
               trailing: Row( // Use Row for stock and actions menu
                  mainAxisSize: MainAxisSize.min, // Constrain row width
                  children: [

@@ -209,8 +209,10 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                          return ListTile(
                              dense: true, // Make items compact
                              title: Text(item.itemNameSnapshot),
-                             subtitle: Text('${item.quantity} x ${NumberFormat.currency(symbol: '\$').format(item.unitPrice)}'),
-                             trailing: Text(NumberFormat.currency(symbol: '\$').format(item.lineTotal)),
+                             // Updated currency format
+                             subtitle: Text('${item.quantity} x ${NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(item.unitPrice)}'),
+                             // Updated currency format
+                             trailing: Text(NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(item.lineTotal)),
                          );
                       },
                   ),
@@ -286,7 +288,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                  children: [
                     Text('Total Sales:', style: Theme.of(context).textTheme.bodySmall),
                     Text(
-                       NumberFormat.currency(symbol: '\$').format(_totalSales),
+                       // Updated currency format
+                       NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(_totalSales),
                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                          fontWeight: FontWeight.bold,
                          color: Theme.of(context).colorScheme.primary,
@@ -353,9 +356,10 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
           child: ListTile(
             leading: CircleAvatar(
                 // Show index number (descending for recent first if list is sorted that way)
-                child: Text('${_salesRecords.length - index}'),
                 backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
                 foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                // Show index number (descending for recent first if list is sorted that way)
+                child: Text('${_salesRecords.length - index}'),
             ),
             title: Text('Sale on ${DateFormat.yMMMd().format(record.saleDate)}'), // Formatted date
             subtitle: Text('${record.itemsSold.length} Item(s) | Entry: ${record.entryMethod}'),
@@ -364,7 +368,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                children: [
                   // Total Amount for the sale
                   Text(
-                     NumberFormat.currency(symbol: '\$').format(record.totalAmount),
+                     // Updated currency format
+                     NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(record.totalAmount),
                      style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 8), // Spacing

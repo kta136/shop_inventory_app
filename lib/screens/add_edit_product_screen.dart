@@ -40,6 +40,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           if (!_isLoading) {
             _saveProduct();
           }
+          return null;
           // MISSING RETURN STATEMENT HERE if !_isLoading is false
           // or even after _saveProduct() is called (though async)
        },
@@ -161,11 +162,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                               inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
                               textInputAction: TextInputAction.next,
                               validator: (value) { /* ... */ return null; },
-                            ),
-                            const SizedBox(height: 16.0),
+                             ),
+                             const SizedBox(height: 16.0),
                              TextFormField(
                               controller: _priceController,
-                              decoration: const InputDecoration(labelText: 'Default Unit Price', hintText: 'Enter the price per unit (e.g., 10.99)', border: OutlineInputBorder(), prefixText: '\$'),
+                              // Updated currency symbol prefix
+                              decoration: const InputDecoration(labelText: 'Default Unit Price', hintText: 'Enter the price per unit (e.g., 10.99)', border: OutlineInputBorder(), prefixText: '₹ '),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
                               textInputAction: TextInputAction.done,

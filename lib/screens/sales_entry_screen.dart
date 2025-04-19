@@ -46,6 +46,7 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
 
   bool _isLoadingProducts = true;
   bool _isSavingSale = false; // Loading indicator for finalize/save buttons
+  int _hoveredOptionIndex = -1; // State for hover effect
 
   // --- Action & Shortcut Maps ---
   late final Map<Type, Action<Intent>> _salesEntryActions = <Type, Action<Intent>>{
@@ -436,12 +437,25 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                         itemCount: options.length,
                         itemBuilder: (BuildContext context, int index) {
                           final Product option = options.elementAt(index);
-                          return InkWell(
-                            onTap: () => onSelected(option), // Trigger selection
-                            child: ListTile(
-                              dense: true,
-                              title: Text(option.itemName),
-                              subtitle: Text('Stock: ${option.currentStock} | Price: \$${option.defaultUnitPrice.toStringAsFixed(2)}'),
+                          final bool isHovered = index == _hoveredOptionIndex;
+                          return MouseRegion(
+                            onEnter: (_) {
+                              if (mounted) setState(() => _hoveredOptionIndex = index);
+                            },
+                            onExit: (_) {
+                              if (mounted) setState(() => _hoveredOptionIndex = -1);
+                            },
+                            child: InkWell(
+                              onTap: () => onSelected(option), // Trigger selection
+                              child: Container( // Wrap ListTile in Container for background color
+                                color: isHovered ? Colors.grey.shade200 : null, // Apply hover color
+                                child: ListTile(
+                                  dense: true,
+                                  title: Text(option.itemName),
+                                  // Updated currency symbol
+                                  subtitle: Text('Stock: ${option.currentStock} | Price: ₹${option.defaultUnitPrice.toStringAsFixed(2)}'),
+                                ),
+                              ),
                             ),
                           );
                         },
@@ -508,7 +522,8 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                     child: TextFormField(
                       controller: _unitPriceController,
                       focusNode: _priceFocusNode, // Assign focus node
-                      decoration: const InputDecoration(labelText: 'Unit Price', border: OutlineInputBorder(), prefixText: '\$ '),
+                      // Updated currency symbol prefix
+                      decoration: const InputDecoration(labelText: 'Unit Price', border: OutlineInputBorder(), prefixText: '₹ '),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
                       onFieldSubmitted: (_) => _addItemToSale(), // Trigger add item on Enter
@@ -565,11 +580,13 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
             title: Text(item.product.itemName, style: const TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('${item.quantity} x ${NumberFormat.currency(symbol: '\$').format(item.unitPrice)}'),
+            // Updated currency format
+            subtitle: Text('${item.quantity} x ${NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(item.unitPrice)}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(NumberFormat.currency(symbol: '\$').format(lineTotal), style: const TextStyle(fontWeight: FontWeight.bold)),
+                // Updated currency format
+                Text(NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(lineTotal), style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(width: 4),
                 IconButton(
                   icon: Icon(Icons.remove_circle_outline, color: Theme.of(context).colorScheme.error),
@@ -613,7 +630,8 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
              children: [
                Text('Total: ', style: Theme.of(context).textTheme.titleLarge),
                Text(
-                 NumberFormat.currency(symbol: '\$').format(_currentSaleTotal), // Currency format
+                 // Updated currency format
+                 NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(_currentSaleTotal), // Currency format
                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                ),
              ],

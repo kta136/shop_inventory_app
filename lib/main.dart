@@ -9,12 +9,11 @@ import 'screens/main_screen.dart'; // <-- Import MainScreen
 // Import your project files
 import 'managers/inventory_manager.dart';
 import 'managers/sales_manager.dart'; // <-- Import SalesManager
-import 'models/product.dart';
 import 'services/database_service.dart';
 import 'services/sqlite_database_service.dart';
 
 // Import the screen (we will rename/create this soon)
-import 'screens/inventory_screen.dart'; // <-- Adjusted path
+// <-- Adjusted path
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
