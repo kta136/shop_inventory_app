@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../managers/sales_manager.dart'; // Import SalesManager
 import '../models/sale_record.dart';
-import '../models/sale_item.dart'; // Import SaleItem for details dialog
+// Import SaleItem for details dialog
 
 
 class SalesHistoryScreen extends StatefulWidget {
