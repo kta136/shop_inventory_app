@@ -39,14 +39,14 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
   final _addItemFormKey = GlobalKey<FormState>();
 
   // Controllers and Focus Nodes for Form Fields
-  final TextEditingController _productAutocompleteController = TextEditingController(); // Manage Autocomplete text
-  final FocusNode _productFocusNode = FocusNode(); // Manage Autocomplete focus
+  final TextEditingController _productAutocompleteController = TextEditingController(); // Manage Autocomplete text display externally if needed
+  final FocusNode _productFocusNode = FocusNode(); // Manage Autocomplete focus externally
   final FocusNode _quantityFocusNode = FocusNode(); // Manage Qty focus
   final FocusNode _priceFocusNode = FocusNode(); // Manage Price focus
 
   bool _isLoadingProducts = true;
   bool _isSavingSale = false; // Loading indicator for finalize/save buttons
-  int _hoveredOptionIndex = -1; // State for hover effect
+  bool _isAddingItem = false; // Flag to prevent rapid add triggers / state conflicts
 
   // --- Action & Shortcut Maps ---
   late final Map<Type, Action<Intent>> _salesEntryActions = <Type, Action<Intent>>{
@@ -68,18 +68,17 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
     // Fetch products and then set initial focus
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchAvailableProducts().then((_) {
-        if (mounted) FocusScope.of(context).requestFocus(_productFocusNode);
+        if (mounted) _productFocusNode.requestFocus(); // Use direct request on our node
       });
     });
     // Listener to handle manual clearing of autocomplete field
     _productAutocompleteController.addListener(() {
+      // This listener ensures state is cleared if text controller is emptied externally/programmatically
       if (_productAutocompleteController.text.isEmpty && _selectedProduct != null) {
         if (mounted) {
           setState(() {
-            _selectedProduct = null; // Clear the selected product state
-            _unitPriceController.clear(); // Clear dependent fields
-             // Optional: Clear quantity too or reset to 1?
-            // _quantityController.text = '1';
+            _selectedProduct = null;
+            _unitPriceController.clear();
           });
         }
       }
@@ -139,42 +138,77 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
     }
   }
 
-  // --- Add Item to Sale Logic ---
+  // --- Add Item Logic - Attempt 2: Unfocus then Refocus ---
   void _addItemToSale() {
-    if (!mounted) return;
-    // 1. Ensure a product object is selected (set via Autocomplete's onSelected)
+    // Prevent rapid re-entry while processing add/focus
+    if (!mounted || _isAddingItem) return;
+
+    // 1. Ensure a product object is selected
     if (_selectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Please select a valid product from the suggestions list.'),
           backgroundColor: Colors.orange));
-      FocusScope.of(context).requestFocus(_productFocusNode); // Direct user back
+      _productFocusNode.requestFocus();
       return;
     }
-    // 2. Validate the Quantity and Price fields using their form key
+    // 2. Validate the Quantity and Price fields
     if (_addItemFormKey.currentState?.validate() ?? false) {
+      // --- Set processing flag ---
+      setState(() { _isAddingItem = true; });
+
       final int quantity = int.parse(_quantityController.text);
       final double unitPrice = double.parse(_unitPriceController.text);
+      final productToAdd = _selectedProduct!;
 
-      // 3. Add item using the confirmed _selectedProduct
+      // 3. Add item and clear form within setState
       setState(() {
         _currentSaleItems.add((
-          product: _selectedProduct!, // Use the state variable set by onSelected
+          product: productToAdd,
           quantity: quantity,
           unitPrice: unitPrice,
         ));
-        _calculateTotal(); // Update total amount
+        _calculateTotal();
+        _clearAddItemForm();
       });
 
-      // 4. Clear form and refocus for next item
-      _clearAddItemForm();
-      FocusScope.of(context).requestFocus(_productFocusNode);
+      // 4. Unfocus, wait briefly, then request focus back AFTER the build frame completes
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          print("Attempting to unfocus and refocus product field after add.");
+          // 1. Unfocus whatever currently has focus
+          FocusScope.of(context).unfocus();
+          // 2. Introduce a minimal delay to allow unfocus to register
+          Future.delayed(const Duration(milliseconds: 30), () { // Reduced delay slightly
+             if (mounted) {
+                // 3. Request focus for the target node
+                print("  Delayed: Requesting focus for product field.");
+                _productFocusNode.requestFocus();
+                // 4. Reset the flag (moved inside delay after focus request)
+                //    Use setState here if any UI elements depend on _isAddingItem finishing visually
+                //    If only used for button disable state, direct assignment is okay.
+                //    Using setState for safety in case of future UI dependencies.
+                 setState(() { _isAddingItem = false; });
+             } else {
+                _isAddingItem = false;
+             }
+          });
+        } else {
+           // If widget unmounted before callback, ensure flag is reset
+           _isAddingItem = false;
+        }
+      });
+
     } else {
       // Validation failed on Qty/Price
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Please correct quantity/price errors.'),
           backgroundColor: Colors.orange));
+      // Reset flag immediately if validation fails
+       _isAddingItem = false; // No need for setState if validation fails before state changes
     }
   }
+  // --- END Add Item Logic - Attempt 2 ---
+
 
   // --- Remove Item from Sale Logic ---
   void _removeItemFromSale(int index) {
@@ -187,7 +221,9 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
 
   // --- Finalize Sale Logic ---
   Future<void> _finalizeSale() async {
-    if (!mounted) return;
+    // Prevent saving if already saving or adding an item (edge case)
+    if (!mounted || _isSavingSale || _isAddingItem) return;
+
     if (_currentSaleItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Cannot record an empty sale. Add items first.'),
@@ -248,10 +284,11 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
   void _clearAddItemForm() {
     // Needs setState if called independently
     _selectedProduct = null; // Clear selected product state
-    _productAutocompleteController.clear(); // Clear the text field
+    _productAutocompleteController.clear(); // Clear the external text controller
     _quantityController.text = '1'; // Reset quantity
     _unitPriceController.clear();   // Clear price
     _addItemFormKey.currentState?.reset(); // Reset Qty/Price validation state
+     // Note: The internal controller of Autocomplete fieldViewBuilder is cleared via its suffixIcon logic if user clicks it
   }
 
   // Clears the entire state of the current sale entry screen
@@ -261,7 +298,7 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
       _selectedSaleDate = DateTime.now();
       _currentSaleItems.clear();
       _currentSaleTotal = 0.0;
-      _clearAddItemForm(); // Includes resetting _selectedProduct
+      _clearAddItemForm(); // Includes resetting _selectedProduct and controllers
     });
   }
 
@@ -289,7 +326,8 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                            : const Icon(Icons.check_circle_outline),
                        label: const Text("Finalize Sale"),
-                       onPressed: _isSavingSale ? null : _finalizeSale,
+                       // Disable while saving OR adding an item
+                       onPressed: (_isSavingSale || _isAddingItem) ? null : _finalizeSale,
                        style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onPrimary),
                      ),
                   ),
@@ -369,10 +407,10 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
             Autocomplete<Product>(
               // Use fieldViewBuilder for the text input field
               fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                // Use the focusNode provided by the builder here for internal focus mgmt
+                // Use the focusNode provided by the builder for internal focus mgmt
                 return TextFormField(
                   controller: controller, // Use builder's controller
-                  focusNode: focusNode,   // Use builder's focus node
+                  focusNode: focusNode,   // Use builder's focus node HERE
                   decoration: InputDecoration(
                     labelText: 'Search & Select Product',
                     hintText: _availableProducts.isEmpty ? 'No products loaded' : 'Start typing product name...',
@@ -390,7 +428,7 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                                   _productAutocompleteController.clear(); // Clear our mirrored controller
                                   _selectedProduct = null; // Clear state variable
                                   _unitPriceController.clear(); // Clear dependent price
-                                  FocusScope.of(context).requestFocus(_productFocusNode); // Refocus our node
+                                  focusNode.requestFocus(); // Refocus the (now empty) field using builder's node
                                 });
                               }
                             },
@@ -398,90 +436,68 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                         : null,
                   ),
                   onFieldSubmitted: (_) => onFieldSubmitted(), // Let Autocomplete handle submit
-                  // Removed validator from here
+                  // Removed validator - Handled in _addItemToSale
                 );
               },
               // Generate options based on text input
               optionsBuilder: (TextEditingValue textEditingValue) {
-                // print("Autocomplete input: '${textEditingValue.text}'"); // DEBUG
                 if (textEditingValue.text.trim().isEmpty) {
                   return const Iterable<Product>.empty();
                 }
                 final searchTerm = textEditingValue.text.toLowerCase();
-                // print("Searching for: '$searchTerm'"); // DEBUG
-                final filteredOptions = _availableProducts.where((Product option) {
-                  final itemNameLower = option.itemName.toLowerCase();
-                  return itemNameLower.contains(searchTerm);
-                }).toList();
-                // print("Filtered options count: ${filteredOptions.length}"); // DEBUG
-                return filteredOptions;
+                return _availableProducts.where((Product option) {
+                  return option.itemName.toLowerCase().contains(searchTerm);
+                });
               },
               // Build the view for the dropdown options list
               optionsViewBuilder: (context, onSelected, options) {
-                // print(">>> optionsViewBuilder called with ${options.length} options."); // DEBUG
-                if (options.isEmpty && _productAutocompleteController.text.isNotEmpty) {
-                  // Optional: You could return a 'No results found' widget here
-                  // return Material(... ListTile(title: Text("No matching products found")));
-                }
-                if (options.isEmpty) return const SizedBox.shrink(); // Don't build if empty
-
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4.0,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 250), // Limit dropdown height
-                      child: ListView.builder(
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        itemCount: options.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final Product option = options.elementAt(index);
-                          final bool isHovered = index == _hoveredOptionIndex;
-                          return MouseRegion(
-                            onEnter: (_) {
-                              if (mounted) setState(() => _hoveredOptionIndex = index);
-                            },
-                            onExit: (_) {
-                              if (mounted) setState(() => _hoveredOptionIndex = -1);
-                            },
-                            child: InkWell(
-                              onTap: () => onSelected(option), // Trigger selection
-                              child: Container( // Wrap ListTile in Container for background color
-                                color: isHovered ? Colors.grey.shade200 : null, // Apply hover color
+                if (options.isEmpty) return const SizedBox.shrink();
+                return LayoutBuilder( // Use LayoutBuilder
+                  builder: (context, constraints) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 4.0,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 250),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              final Product option = options.elementAt(index);
+                              return InkWell(
+                                onTap: () => onSelected(option),
                                 child: ListTile(
                                   dense: true,
                                   title: Text(option.itemName),
-                                  // Updated currency symbol
-                                  subtitle: Text('Stock: ${option.currentStock} | Price: ₹${option.defaultUnitPrice.toStringAsFixed(2)}'),
+                                  subtitle: Text('Stock: ${option.currentStock} | Price: ₹${option.defaultUnitPrice.toStringAsFixed(2)}'), // INR
                                 ),
-                              ),
-                            ),
-                          );
-                        },
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }
                 );
               },
               // When an option is selected from the list
               onSelected: (Product selection) {
-                print("Product selected via onSelected: ${selection.itemName}"); // DEBUG
                 if (mounted) {
                   setState(() {
-                    _selectedProduct = selection; // Update the state variable
+                    _selectedProduct = selection;
                     _productAutocompleteController.text = selection.itemName; // Sync our display controller
                     _unitPriceController.text = selection.defaultUnitPrice.toStringAsFixed(2);
                     _quantityController.text = '1';
-                    _addItemFormKey.currentState?.reset(); // Reset Qty/Price validation state
+                    _addItemFormKey.currentState?.reset();
                   });
-                  // Move focus to the quantity field
-                  FocusScope.of(context).requestFocus(_quantityFocusNode);
+                  _quantityFocusNode.requestFocus(); // Use direct request on our node
                 }
               },
               // Tells Autocomplete what string to display for a selected Product object
               displayStringForOption: (Product option) => option.itemName,
-              // Assign our controller to potentially set initial text if needed (usually not for search)
+              // Assign our controller to potentially set initial text if needed
               initialValue: TextEditingValue(text: _productAutocompleteController.text),
             ),
             const SizedBox(height: 12),
@@ -502,7 +518,7 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       textAlign: TextAlign.center,
-                      onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_priceFocusNode), // Move focus on Enter
+                      onFieldSubmitted: (_) => _priceFocusNode.requestFocus(), // Move focus on Enter
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Req.';
                         final number = int.tryParse(value);
@@ -522,8 +538,7 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                     child: TextFormField(
                       controller: _unitPriceController,
                       focusNode: _priceFocusNode, // Assign focus node
-                      // Updated currency symbol prefix
-                      decoration: const InputDecoration(labelText: 'Unit Price', border: OutlineInputBorder(), prefixText: '₹ '),
+                      decoration: const InputDecoration(labelText: 'Unit Price', border: OutlineInputBorder(), prefixText: '₹ '), // INR
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
                       onFieldSubmitted: (_) => _addItemToSale(), // Trigger add item on Enter
@@ -539,13 +554,16 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                   const SizedBox(width: 10),
                   // Add Item Button
                   Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Tooltip( // Keep tooltip here
+                    padding: const EdgeInsets.only(top: 4.0), // Align button
+                    child: Tooltip(
                       message: 'Add Item to Sale',
                       child: ElevatedButton(
-                        onPressed: _addItemToSale, // Calls add item logic
+                         // Disable button while processing add
+                        onPressed: _isAddingItem ? null : _addItemToSale,
                         style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14)),
-                        child: const Icon(Icons.add),
+                        child: _isAddingItem
+                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) // Show loading on button too
+                           : const Icon(Icons.add),
                       ),
                     ),
                   ),
@@ -580,13 +598,11 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
             title: Text(item.product.itemName, style: const TextStyle(fontWeight: FontWeight.w500)),
-            // Updated currency format
-            subtitle: Text('${item.quantity} x ${NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(item.unitPrice)}'),
+            subtitle: Text('${item.quantity} x ${NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(item.unitPrice)}'), // INR Update with locale
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Updated currency format
-                Text(NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(lineTotal), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(lineTotal), style: const TextStyle(fontWeight: FontWeight.bold)), // INR Update with locale
                 const SizedBox(width: 4),
                 IconButton(
                   icon: Icon(Icons.remove_circle_outline, color: Theme.of(context).colorScheme.error),
@@ -616,7 +632,8 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
                  ? const SizedBox(height:18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) // Loading indicator
                  : const Icon(Icons.save_alt), // Save icon
              label: const Text('Save Sale'),
-             onPressed: _isSavingSale ? null : _finalizeSale, // Disable while saving
+             // Disable while saving OR adding item
+             onPressed: (_isSavingSale || _isAddingItem) ? null : _finalizeSale,
              style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 backgroundColor: Theme.of(context).colorScheme.secondary, // Use secondary color
@@ -630,8 +647,7 @@ class _SalesEntryScreenState extends State<SalesEntryScreen> {
              children: [
                Text('Total: ', style: Theme.of(context).textTheme.titleLarge),
                Text(
-                 // Updated currency format
-                 NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(_currentSaleTotal), // Currency format
+                 NumberFormat.currency(symbol: '₹ ', locale: 'en_IN').format(_currentSaleTotal), // INR Update with locale
                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                ),
              ],
